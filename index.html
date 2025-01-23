@@ -262,19 +262,20 @@
             top: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
+            background: transparent;  /* 배경색을 투명하게 변경 */
             color: white;
             padding: 12px 20px;
             border-radius: 8px;
             font-size: clamp(13px, 3.5vw, 14px);
             pointer-events: none;
             opacity: 0;
-            transition: all 0.3s ease;  /* 기존 opacity 트랜지션에 all 추가 */
+            transition: all 0.3s ease;
             text-align: center;
             z-index: 999;
             width: fit-content;
             max-width: calc(100% - 32px);
             margin: 0 auto;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);  /* 텍스트 가독성을 위한 그림자 추가 */
         }
         #action-guide.show {
             opacity: 1;
@@ -446,7 +447,7 @@
 
         // Scene, Camera, Renderer
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x000000);
+        scene.background = new THREE.Color(0x1a1a2e);  // 차분한 진한 남색
         
         // 조명 추가
         const ambientLight = new THREE.AmbientLight(0x404040, 1.2);
@@ -543,20 +544,16 @@
         const perspectiveControls = new OrbitControls(perspectiveCamera, renderer.domElement);
         let controls = orthographicControls;  // 기본 컨트롤을 orthographic으로 설정
         
+        // OrbitControls 설정 수정
         [orthographicControls, perspectiveControls].forEach(control => {
             control.enableDamping = true;
             control.dampingFactor = 0.1;
+            control.rotateSpeed = 0.8;
+            control.enableZoom = true;
+            control.enablePan = true;
             control.screenSpacePanning = false;
             control.maxDistance = 50;
             control.minDistance = 1;
-
-            // 드래그 시작/종료 감지
-            control.addEventListener('start', () => {
-                isDragging = true;
-            });
-            control.addEventListener('end', () => {
-                isDragging = false;
-            });
         });
 
         // Points Configuration
@@ -684,6 +681,7 @@
         const mouse = new THREE.Vector2();
         let hoveredPoint = null;
 
+        // 점 선택을 위한 마우스 이벤트 핸들러
         function onMouseMove(event) {
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -700,7 +698,7 @@
                     hoveredPoint = intersects[0].object;
                     if (!selectedPoints.includes(hoveredPoint)) {
                         hoveredPoint.material = selectedMaterial;
-                        hoveredPoint.scale.set(1.3, 1.3, 1.3);  // 호버 시 크기를 1.5에서 1.3으로 조정
+                        hoveredPoint.scale.set(1.3, 1.3, 1.3);
                     }
                 }
             } else {
@@ -894,35 +892,41 @@
                 color: 0x808080,  // 회색
                 side: THREE.DoubleSide,
                 transparent: false,
-                shininess: 30,
-                specular: 0x444444,
-                flatShading: true
+                shininess: 60,     // 광택도 증가
+                specular: 0x666666,  // 반사광 증가
+                flatShading: true,   // 평면 셰이딩으로 각진 부분 강조
+                wireframe: false,
+                emissive: 0x111111,  // 약간의 자체 발광 추가
+                emissiveIntensity: 0.1
             });
             
             currentPolygon = new THREE.Mesh(shapeGeometry, shapeMaterial);
             currentPolygon.castShadow = true;
             currentPolygon.receiveShadow = true;
+
+            // 법선 벡터 계산
+            shapeGeometry.computeVertexNormals();
+            
             scene.add(currentPolygon);
         }
 
-        // Scene, Camera, Renderer 설정 아래에 자동 회전 관련 변수 추가
-        let autoRotate = false;
-        const autoRotateSpeed = 0.001;  // 매우 느린 회전 속도
-        let isDragging = false;
-
         // 생성 버튼 클릭 이벤트 수정
-        createButton.addEventListener('click', () => {
+        createButton.addEventListener('click', async () => {
             if (selectedPoints.length > 2) {
                 createPolygon();
                 isPolygonCompleted = true;
                 updateCreateButtonVisibility();
                 showActionGuide(getActionMessage('completed'));
-                autoRotate = true;  // 자동 회전 활성화
+                
+                // 자이로스코프 초기화
+                if (isMobileDevice) {
+                    await initGyroscope();
+                }
                 
                 // 선택되지 않은 점들을 반투명하게 처리
                 pointObjects.forEach(point => {
                     if (!selectedPoints.includes(point)) {
-                        point.material = point.material.clone();  // 재질 복제
+                        point.material = point.material.clone();
                         point.material.transparent = true;
                         point.material.opacity = 0.3;
                     }
@@ -931,19 +935,23 @@
         });
 
         // Enter 키 이벤트 핸들러 수정
-        function onEnterKey(event) {
+        async function onEnterKey(event) {
             if (event.key === 'Enter') {
                 if (selectedPoints.length > 2) {
                     createPolygon();
                     isPolygonCompleted = true;
                     updateCreateButtonVisibility();
                     showActionGuide(getActionMessage('completed'));
-                    autoRotate = true;  // 자동 회전 활성화
+                    
+                    // 자이로스코프 초기화
+                    if (isMobileDevice) {
+                        await initGyroscope();
+                    }
                     
                     // 선택되지 않은 점들을 반투명하게 처리
                     pointObjects.forEach(point => {
                         if (!selectedPoints.includes(point)) {
-                            point.material = point.material.clone();  // 재질 복제
+                            point.material = point.material.clone();
                             point.material.transparent = true;
                             point.material.opacity = 0.3;
                         }
@@ -954,7 +962,7 @@
             }
         }
 
-        // Event Listeners
+        // Event Listeners - 점 선택용
         window.addEventListener('mousemove', onMouseMove);
         window.addEventListener('click', onClick);
         window.addEventListener('keydown', onEnterKey);
@@ -1001,11 +1009,6 @@
         // Animation Loop 수정
         function animate() {
             requestAnimationFrame(animate);
-            
-            // 자동 회전 처리
-            if (autoRotate && !isDragging) {
-                scene.rotation.y += autoRotateSpeed;
-            }
             
             // 조명 위치 업데이트
             const cameraPosition = camera.position.clone();
@@ -1122,6 +1125,91 @@
 
         // 초기 상태로 접힌 상태 설정
         controlsGuide.classList.add('collapsed');
+
+        // Scene, Camera, Renderer 설정 아래에 자이로 관련 변수 추가
+        let isGyroEnabled = false;
+        let initialOrientation = null;
+        const gyroSensitivity = 0.5;  // 자이로 감도 조절
+
+        // 자이로스코프 권한 요청 및 초기화 함수
+        async function initGyroscope() {
+            try {
+                // iOS 13+ 디바이스 체크
+                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    const permission = await DeviceOrientationEvent.requestPermission();
+                    if (permission === 'granted') {
+                        enableGyroscope();
+                    }
+                } else {
+                    // 안드로이드 및 기타 디바이스
+                    enableGyroscope();
+                }
+            } catch (error) {
+                console.log('자이로스코프를 사용할 수 없습니다:', error);
+            }
+        }
+
+        // 자이로스코프 활성화 함수
+        function enableGyroscope() {
+            isGyroEnabled = true;
+            window.addEventListener('deviceorientation', handleGyroscope);
+        }
+
+        // 자이로스코프 이벤트 핸들러
+        function handleGyroscope(event) {
+            if (!isGyroEnabled || controls.enabled === false) return;
+
+            // 초기 방향 설정
+            if (!initialOrientation) {
+                initialOrientation = {
+                    beta: event.beta,
+                    gamma: event.gamma
+                };
+                return;
+            }
+
+            // 현재 방향과 초기 방향의 차이 계산
+            const deltaGamma = (event.gamma - initialOrientation.gamma) * gyroSensitivity;
+            const deltaBeta = (event.beta - initialOrientation.beta) * gyroSensitivity;
+
+            // 카메라 회전 적용
+            const radius = camera.position.length();
+            let theta = Math.atan2(camera.position.x, camera.position.z);
+            let phi = Math.acos(camera.position.y / radius);
+
+            // 감도를 조절하여 회전 적용
+            theta += deltaGamma * Math.PI / 180 * 0.01;
+            phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi + deltaBeta * Math.PI / 180 * 0.01));
+
+            // 새로운 카메라 위치 계산
+            camera.position.x = radius * Math.sin(phi) * Math.sin(theta);
+            camera.position.y = radius * Math.cos(phi);
+            camera.position.z = radius * Math.sin(phi) * Math.cos(theta);
+
+            camera.lookAt(controls.target);
+        }
+
+        // 자이로스코프 리셋 함수
+        function resetGyroscope() {
+            initialOrientation = null;
+        }
+
+        // 터치 이벤트 시작 시 자이로스코프 일시 중지
+        renderer.domElement.addEventListener('touchstart', () => {
+            controls.enabled = true;
+            isGyroEnabled = false;
+        });
+
+        // 터치 이벤트 종료 시 자이로스코프 재개
+        renderer.domElement.addEventListener('touchend', () => {
+            if (isMobileDevice) {
+                setTimeout(() => {
+                    controls.enabled = true;
+                    isGyroEnabled = true;
+                    resetGyroscope();
+                }, 100);
+            }
+        });
     </script>
 </body>
 </html>
