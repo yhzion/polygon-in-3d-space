@@ -2,6 +2,9 @@
 
 3D 공간에서 점들을 선택하여 폴리곤을 생성할 수 있는 웹 애플리케이션입니다.
 
+![image](https://github.com/user-attachments/assets/8b739d08-18e4-47f8-a635-cefd5fd5c8b2)
+
+
 ## 주요 기능
 
 - 3D 공간에서 자유롭게 점 선택
