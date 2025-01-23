@@ -451,13 +451,23 @@
     {
         "imports": {
             "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
-            "three/examples/jsm/controls/OrbitControls": "https://unpkg.com/three@0.162.0/examples/jsm/controls/OrbitControls.js"
+            "three/examples/jsm/controls/OrbitControls": "https://unpkg.com/three@0.162.0/examples/jsm/controls/OrbitControls.js",
+            "three/examples/jsm/libs/stats.module": "https://unpkg.com/three@0.162.0/examples/jsm/libs/stats.module.js"
         }
     }
     </script>
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+        import Stats from 'three/examples/jsm/libs/stats.module';
+
+        // Stats 초기화
+        const stats = new Stats();
+        stats.dom.style.position = 'absolute';
+        stats.dom.style.right = '0px';
+        stats.dom.style.top = '0px';
+        stats.dom.style.left = 'auto';
+        document.body.appendChild(stats.dom);
 
         // Scene, Camera, Renderer
         const scene = new THREE.Scene();
@@ -1030,6 +1040,9 @@
         // Animation Loop 수정
         function animate() {
             requestAnimationFrame(animate);
+            
+            // Stats 업데이트
+            stats.update();
             
             // 조명 위치 업데이트
             const cameraPosition = camera.position.clone();
