@@ -831,10 +831,7 @@
         function triggerHaptic() {
             try {
                 if (isMobileDevice && window.navigator?.vibrate) {
-                    // 안드로이드에서는 더 긴 진동 시간 사용
-                    const isAndroid = /Android/i.test(navigator.userAgent);
-                    const vibrationDuration = isAndroid ? 100 : 40;
-                    window.navigator.vibrate(vibrationDuration);
+                    window.navigator.vibrate(40);  // 모든 기기에서 40ms로 통일
                 }
             } catch (error) {
                 console.log('Haptic feedback not supported');
