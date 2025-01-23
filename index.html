@@ -27,6 +27,7 @@
             margin: 0; 
             overflow: hidden;
             font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #1a1a2e;  /* Three.js 캔버스와 동일한 배경색 */
         }
         canvas { display: block; }
         #mode-selector {
@@ -402,9 +403,48 @@
                 height: 18px;
             }
         }
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
+        #loading-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+        .loading-text {
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <div class="loading-text">로딩 중...</div>
+    </div>
     <div id="mode-selector">
         <div class="option-group">
             <span class="icon">
@@ -1168,6 +1208,25 @@
 
         // Raycaster 설정 수정
         raycaster.params.Points.threshold = 0.1;  // 클릭/터치 감지 영역 증가
+
+        // Animation Loop 시작 전에 로딩 화면 제거
+        function hideLoadingScreen() {
+            const loadingScreen = document.getElementById('loading-screen');
+            loadingScreen.classList.add('fade-out');
+            setTimeout(() => {
+                loadingScreen.remove();
+            }, 500);
+        }
+
+        // Scene, Camera, Renderer 초기화 후
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        document.body.appendChild(renderer.domElement);
+
+        // 모든 초기화가 완료된 후 로딩 화면 숨기기
+        hideLoadingScreen();
     </script>
 </body>
 </html>
