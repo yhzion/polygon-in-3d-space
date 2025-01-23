@@ -918,11 +918,6 @@
                 updateCreateButtonVisibility();
                 showActionGuide(getActionMessage('completed'));
                 
-                // 자이로스코프 초기화
-                if (isMobileDevice) {
-                    await initGyroscope();
-                }
-                
                 // 선택되지 않은 점들을 반투명하게 처리
                 pointObjects.forEach(point => {
                     if (!selectedPoints.includes(point)) {
@@ -942,11 +937,6 @@
                     isPolygonCompleted = true;
                     updateCreateButtonVisibility();
                     showActionGuide(getActionMessage('completed'));
-                    
-                    // 자이로스코프 초기화
-                    if (isMobileDevice) {
-                        await initGyroscope();
-                    }
                     
                     // 선택되지 않은 점들을 반투명하게 처리
                     pointObjects.forEach(point => {
@@ -1125,91 +1115,6 @@
 
         // 초기 상태로 접힌 상태 설정
         controlsGuide.classList.add('collapsed');
-
-        // Scene, Camera, Renderer 설정 아래에 자이로 관련 변수 추가
-        let isGyroEnabled = false;
-        let initialOrientation = null;
-        const gyroSensitivity = 0.5;  // 자이로 감도 조절
-
-        // 자이로스코프 권한 요청 및 초기화 함수
-        async function initGyroscope() {
-            try {
-                // iOS 13+ 디바이스 체크
-                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    const permission = await DeviceOrientationEvent.requestPermission();
-                    if (permission === 'granted') {
-                        enableGyroscope();
-                    }
-                } else {
-                    // 안드로이드 및 기타 디바이스
-                    enableGyroscope();
-                }
-            } catch (error) {
-                console.log('자이로스코프를 사용할 수 없습니다:', error);
-            }
-        }
-
-        // 자이로스코프 활성화 함수
-        function enableGyroscope() {
-            isGyroEnabled = true;
-            window.addEventListener('deviceorientation', handleGyroscope);
-        }
-
-        // 자이로스코프 이벤트 핸들러
-        function handleGyroscope(event) {
-            if (!isGyroEnabled || controls.enabled === false) return;
-
-            // 초기 방향 설정
-            if (!initialOrientation) {
-                initialOrientation = {
-                    beta: event.beta,
-                    gamma: event.gamma
-                };
-                return;
-            }
-
-            // 현재 방향과 초기 방향의 차이 계산
-            const deltaGamma = (event.gamma - initialOrientation.gamma) * gyroSensitivity;
-            const deltaBeta = (event.beta - initialOrientation.beta) * gyroSensitivity;
-
-            // 카메라 회전 적용
-            const radius = camera.position.length();
-            let theta = Math.atan2(camera.position.x, camera.position.z);
-            let phi = Math.acos(camera.position.y / radius);
-
-            // 감도를 조절하여 회전 적용
-            theta += deltaGamma * Math.PI / 180 * 0.01;
-            phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi + deltaBeta * Math.PI / 180 * 0.01));
-
-            // 새로운 카메라 위치 계산
-            camera.position.x = radius * Math.sin(phi) * Math.sin(theta);
-            camera.position.y = radius * Math.cos(phi);
-            camera.position.z = radius * Math.sin(phi) * Math.cos(theta);
-
-            camera.lookAt(controls.target);
-        }
-
-        // 자이로스코프 리셋 함수
-        function resetGyroscope() {
-            initialOrientation = null;
-        }
-
-        // 터치 이벤트 시작 시 자이로스코프 일시 중지
-        renderer.domElement.addEventListener('touchstart', () => {
-            controls.enabled = true;
-            isGyroEnabled = false;
-        });
-
-        // 터치 이벤트 종료 시 자이로스코프 재개
-        renderer.domElement.addEventListener('touchend', () => {
-            if (isMobileDevice) {
-                setTimeout(() => {
-                    controls.enabled = true;
-                    isGyroEnabled = true;
-                    resetGyroscope();
-                }, 100);
-            }
-        });
     </script>
 </body>
 </html>
