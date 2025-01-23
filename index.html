@@ -830,11 +830,20 @@
         // 햅틱 피드백 함수
         function triggerHaptic() {
             try {
-                if (isMobileDevice && window.navigator?.vibrate) {
-                    window.navigator.vibrate(40);  // 모든 기기에서 40ms로 통일
+                if (isMobileDevice) {
+                    // 여러 가지 진동 API 시도
+                    if (typeof navigator.vibrate !== 'undefined') {
+                        navigator.vibrate(40);
+                    } else if (typeof navigator.mozVibrate !== 'undefined') {
+                        navigator.mozVibrate(40);
+                    } else if (typeof Navigator.vibrate !== 'undefined') {
+                        Navigator.vibrate(40);
+                    } else if (typeof window.navigator.vibrate !== 'undefined') {
+                        window.navigator.vibrate(40);
+                    }
                 }
             } catch (error) {
-                console.log('Haptic feedback not supported');
+                console.log('Haptic feedback not supported:', error);
             }
         }
 
