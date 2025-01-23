@@ -819,8 +819,15 @@
 
         // 햅틱 피드백 함수
         function triggerHaptic() {
-            if (isMobileDevice && navigator.vibrate) {
-                navigator.vibrate(40);  // 40ms의 짧은 진동
+            try {
+                if (isMobileDevice && window.navigator?.vibrate) {
+                    // 안드로이드에서는 더 긴 진동 시간 사용
+                    const isAndroid = /Android/i.test(navigator.userAgent);
+                    const vibrationDuration = isAndroid ? 100 : 40;
+                    window.navigator.vibrate(vibrationDuration);
+                }
+            } catch (error) {
+                console.log('Haptic feedback not supported');
             }
         }
 
