@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polygon in 3D space</title>
+    <link rel="icon" href="data:,">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden;
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        }
+        canvas { display: block; }
+        #mode-selector {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.8);
+            padding: 12px 20px;
+            border-radius: 12px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(8px);
+            display: flex;
+            gap: 32px;
+            align-items: center;
+            justify-content: center;
+            width: fit-content;
+            margin: 0 auto;
+            font-size: clamp(13px, 3.5vw, 14px);
+            transition: all 0.3s ease;  /* 애니메이션 추가 */
+        }
+        #create-button {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2563eb;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: clamp(14px, 4vw, 16px);  /* 반응형 폰트 크기 */
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.2s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+        #create-button.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #create-button:hover {
+            background: #1d4ed8;
+        }
+        #create-button:active {
+            transform: translateX(-50%) scale(0.98);
+        }
+        @media (max-width: 480px) {
+            #mode-selector {
+                gap: 16px;
+                padding: 10px 16px;
+                width: calc(100% - 32px);
+                margin: 0 16px;
+            }
+            .option-group {
+                gap: 8px;
+            }
+            .radio-group label {
+                padding: 8px 12px;  /* 터치 영역 확대 */
+                font-size: clamp(12px, 3.5vw, 14px);  /* 반응형 폰트 크기 */
+            }
+            #controls-guide {
+                bottom: 16px;
+                right: 16px;
+                left: 16px;
+                max-width: none;
+                font-size: clamp(12px, 3.5vw, 13px);  /* 반응형 폰트 크기 */
+                padding: 12px 16px;
+            }
+            #controls-guide h3 {
+                font-size: clamp(13px, 4vw, 15px);  /* 반응형 폰트 크기 */
+            }
+            #action-guide {
+                font-size: clamp(13px, 3.5vw, 14px);  /* 반응형 폰트 크기 */
+                padding: 10px 16px;
+                max-width: calc(100% - 32px);
+                white-space: normal;
+                top: 90px;  /* mode-selector와의 간격 조정 */
+            }
+            #create-button {
+                bottom: 90px;  /* 조작 방법 가이드와의 간격 조정 */
+                padding: 12px 24px;
+            }
+        }
+        .option-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-content: center;
+        }
+        .option-group span {
+            font-weight: 600;
+            color: #111;
+            font-size: clamp(13px, 3.5vw, 14px);  /* 반응형 폰트 크기 */
+            white-space: nowrap;
+        }
+        .option-group span.icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+        }
+        .option-group span.icon svg {
+            width: 18px;
+            height: 18px;
+        }
+        .radio-group {
+            display: flex;
+            gap: 4px;
+        }
+        .radio-group label {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #666;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .radio-group label:hover {
+            background: #eee;
+        }
+        .radio-group input[type="radio"] {
+            display: none;
+        }
+        .radio-group input[type="radio"]:checked + span {
+            color: #fff;
+            font-weight: 500;
+        }
+        .radio-group label:has(input[type="radio"]:checked) {
+            background: #2563eb;
+            color: #fff;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+        }
+        .checkbox-group label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #666;
+            padding: 6px 12px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        .checkbox-group label:hover {
+            background: #eee;
+        }
+        .checkbox-group input[type="checkbox"] {
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #666;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+            background: white;
+        }
+        .checkbox-group input[type="checkbox"]:checked {
+            background: white;
+            border-color: #666;
+        }
+        .checkbox-group input[type="checkbox"]:checked::after {
+            content: "";
+            position: absolute;
+            left: 4px;
+            top: 1px;
+            width: 4px;
+            height: 8px;
+            border: solid #666;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        .checkbox-group input[type="checkbox"]:hover {
+            border-color: #333;
+        }
+        .checkbox-group input[type="checkbox"]:checked:hover {
+            border-color: #333;
+        }
+        .checkbox-group input[type="checkbox"]:checked + span {
+            color: #666;
+        }
+        #controls-guide {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 16px 20px;
+            border-radius: 12px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(8px);
+            max-width: 280px;
+            font-size: clamp(13px, 3.5vw, 14px);  /* 반응형 폰트 크기 */
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        #controls-guide.collapsed ul {
+            display: none;
+        }
+        #controls-guide h3 {
+            margin: 0;
+            color: #111;
+            font-size: clamp(14px, 4vw, 16px);  /* 반응형 폰트 크기 */
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
+        }
+        #controls-guide h3::after {
+            content: "";
+            width: 12px;
+            height: 12px;
+            border-right: 2px solid #666;
+            border-bottom: 2px solid #666;
+            transform: rotate(45deg);
+            transition: transform 0.3s ease;
+            margin-left: 8px;
+        }
+        #controls-guide h3::before {
+            display: none;  /* i 아이콘 제거 */
+        }
+        #controls-guide.collapsed h3::after {
+            transform: rotate(-45deg);
+        }
+        #controls-guide ul {
+            margin: 12px 0 0 0;
+            padding-left: 20px;
+            list-style-type: none;
+        }
+        #action-guide {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: clamp(13px, 3.5vw, 14px);
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.3s ease;  /* 기존 opacity 트랜지션에 all 추가 */
+            text-align: center;
+            z-index: 999;
+            width: fit-content;
+            max-width: calc(100% - 32px);
+            margin: 0 auto;
+        }
+        #action-guide.show {
+            opacity: 1;
+            animation: bounce 0.5s cubic-bezier(0.36, 0, 0.66, -0.56) 2 alternate;
+        }
+        @keyframes bounce {
+            0% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-8px); }
+            100% { transform: translateX(-50%) translateY(0); }
+        }
+        #action-guide a {
+            color: #4f9eff;
+            text-decoration: none;
+            pointer-events: auto;
+        }
+        #action-guide a:hover {
+            text-decoration: underline;
+        }
+        /* 가로 모드 대응 스타일 */
+        @media (orientation: landscape) and (max-height: 600px) {
+            #mode-selector {
+                left: 16px;
+                top: 16px;
+                transform: none;
+                margin: 0;
+                justify-content: flex-start;
+            }
+
+            #action-guide {
+                left: 16px;
+                top: 88px;
+                transform: none;
+                text-align: left;
+                margin: 0;
+            }
+
+            .option-group {
+                justify-content: flex-start;
+            }
+        }
+        /* 모바일 세로 모드 대응 스타일 유지 */
+        @media (max-width: 480px) and (orientation: portrait) {
+            #mode-selector {
+                gap: 16px;
+                padding: 10px 16px;
+                width: calc(100% - 32px);
+                margin: 0 16px;
+            }
+            .option-group {
+                gap: 8px;
+            }
+            .radio-group label {
+                padding: 8px 12px;
+            }
+        }
+        #signature {
+            position: fixed;
+            left: 24px;
+            bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(8px);
+            transition: all 0.2s ease;
+            z-index: 1000;
+        }
+
+        #signature:hover {
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        #signature svg {
+            width: 16px;
+            height: 16px;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+
+        #signature:hover svg {
+            opacity: 0.9;
+        }
+
+        #signature img {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 4px;
+            transition: transform 0.2s ease;
+        }
+
+        #signature:hover img {
+            transform: scale(1.1);
+        }
+
+        @media (max-width: 480px) {
+            #signature {
+                left: 16px;
+                bottom: 16px;
+                font-size: 13px;
+            }
+            #signature img {
+                width: 18px;
+                height: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="mode-selector">
+        <div class="option-group">
+            <span class="icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 7l-7 5 7 5V7z"/>
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                </svg>
+            </span>
+            <div class="radio-group">
+                <label>
+                    <input type="radio" name="camera" value="perspective">
+                    <span>원근감 있는</span>
+                </label>
+                <label>
+                    <input type="radio" name="camera" value="orthographic" checked>
+                    <span>원근감 없는</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    <button id="create-button">생성하기</button>
+    <div id="controls-guide" class="collapsed">
+        <h3>조작 방법</h3>
+        <ul>
+            <li>마우스 드래그 / 한 손가락 드래그: 화면 회전</li>
+            <li>마우스 휠 / 두 손가락 핀치: 확대/축소</li>
+            <li>마우스 우클릭 드래그 / 두 손가락 드래그: 화면 이동</li>
+            <li>구를 클릭/터치하여 점 선택</li>
+            <li>Enter 키: 선택한 점들로 삼각형 생성</li>
+        </ul>
+    </div>
+
+    <div id="action-guide"></div>
+
+    <a href="https://github.com/yhzion/3d-polygon-poc" target="_blank" rel="noopener noreferrer" id="signature">
+        <img src="https://avatars.githubusercontent.com/yhzion" alt="yhzion" crossorigin="anonymous" />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+        </svg>
+        yhzion
+    </a>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./node_modules/three/build/three.module.js",
+            "three/examples/jsm/controls/OrbitControls": "./node_modules/three/examples/jsm/controls/OrbitControls.js"
+        }
+    }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+
+        // Scene, Camera, Renderer
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+        
+        // 조명 추가
+        const ambientLight = new THREE.AmbientLight(0x404040, 1.2);
+        scene.add(ambientLight);
+
+        // 카메라를 따라다니는 조명들 추가
+        const frontLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        const rightLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        const leftLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        const backLight = new THREE.DirectionalLight(0xffffff, 1.0);  // 후면 조명 추가
+        
+        // 추가 하이라이트를 위한 스팟라이트들
+        const spotLight1 = new THREE.SpotLight(0xffffff, 1.5);
+        spotLight1.position.set(0, 5, 0);
+        spotLight1.angle = Math.PI / 4;
+        spotLight1.penumbra = 0.1;
+        spotLight1.decay = 1.5;
+        spotLight1.distance = 20;
+        scene.add(spotLight1);
+
+        const spotLight2 = new THREE.SpotLight(0xffffff, 1.0);
+        spotLight2.position.set(0, -5, 0);
+        spotLight2.angle = Math.PI / 4;
+        spotLight2.penumbra = 0.1;
+        spotLight2.decay = 1.5;
+        spotLight2.distance = 20;
+        scene.add(spotLight2);
+        
+        // 추가 하이라이트용 포인트 라이트
+        const pointLights = [];
+        const pointLightPositions = [
+            [5, 5, 5],
+            [-5, 5, 5],
+            [5, -5, 5],
+            [-5, -5, 5],
+            [5, 5, -5],
+            [-5, 5, -5],
+            [5, -5, -5],
+            [-5, -5, -5]
+        ];
+
+        pointLightPositions.forEach(pos => {
+            const light = new THREE.PointLight(0xffffff, 0.5, 10);
+            light.position.set(...pos);
+            scene.add(light);
+            pointLights.push(light);
+        });
+        
+        // 모든 조명에 그림자 설정
+        [frontLight, rightLight, leftLight, backLight, spotLight1, spotLight2].forEach(light => {
+            light.castShadow = true;
+            light.shadow.mapSize.width = 512;
+            light.shadow.mapSize.height = 512;
+            light.shadow.camera.near = 0.5;
+            light.shadow.camera.far = 500;
+            light.shadow.bias = -0.001;
+        });
+
+        scene.add(frontLight);
+        scene.add(rightLight);
+        scene.add(leftLight);
+        scene.add(backLight);
+
+        const orthographicCamera = new THREE.OrthographicCamera(
+            window.innerWidth / -200,
+            window.innerWidth / 200,
+            window.innerHeight / 200,
+            window.innerHeight / -200,
+            0.1,
+            1000
+        );
+        orthographicCamera.position.z = 5;
+
+        const perspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        perspectiveCamera.position.copy(orthographicCamera.position);
+
+        let camera = orthographicCamera;  // 기본 카메라를 orthographic으로 설정
+
+        const renderer = new THREE.WebGLRenderer({ 
+            antialias: true,
+            alpha: true,
+            logarithmicDepthBuffer: true,
+            toneMapping: THREE.ACESFilmicToneMapping,
+            toneMappingExposure: 1.5
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        document.body.appendChild(renderer.domElement);
+
+        // OrbitControls for zoom and panning
+        const orthographicControls = new OrbitControls(orthographicCamera, renderer.domElement);
+        const perspectiveControls = new OrbitControls(perspectiveCamera, renderer.domElement);
+        let controls = orthographicControls;  // 기본 컨트롤을 orthographic으로 설정
+        
+        [orthographicControls, perspectiveControls].forEach(control => {
+            control.enableDamping = true;
+            control.dampingFactor = 0.1;
+            control.screenSpacePanning = false;
+            control.maxDistance = 50;
+            control.minDistance = 1;
+
+            // 드래그 시작/종료 감지
+            control.addEventListener('start', () => {
+                isDragging = true;
+            });
+            control.addEventListener('end', () => {
+                isDragging = false;
+            });
+        });
+
+        // Points Configuration
+        const pointCount = 100;
+        let points = [];
+        let pointObjects = [];
+        const pointMaterial = new THREE.MeshPhysicalMaterial({ 
+            color: 0xffffff,
+            metalness: 0.3,
+            roughness: 0.4,
+            reflectivity: 0.5,
+            clearcoat: 0.3,
+            clearcoatRoughness: 0.4,
+            envMapIntensity: 0.8,
+            ior: 1.5,
+            transmission: 0,
+            specularIntensity: 0.5,
+            specularColor: 0xffffff,
+            thickness: 0
+        });
+        const selectedMaterial = new THREE.MeshPhysicalMaterial({ 
+            color: 0xffd700,  // 황금색
+            metalness: 0.5,
+            roughness: 0.3,
+            reflectivity: 0.7,
+            clearcoat: 0.5,
+            clearcoatRoughness: 0.3,
+            envMapIntensity: 1.0,
+            ior: 2.0,
+            specularIntensity: 0.7,
+            specularColor: 0xffd700,
+            thickness: 0
+        });
+        const selectedPoints = [];
+        const pointLabels = [];  // 점 라벨 저장 배열
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+        let currentPolygon = null;
+        let currentLines = [];
+
+        // 선택된 점의 색상 배열 (이제 사용하지 않음)
+        const selectedColors = [0xffd700];  // 모든 선택된 점은 황금색으로 통일
+
+        // 3D 텍스트 생성 함수
+        function createPointLabel(number, position) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const context = canvas.getContext('2d');
+            
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.fillStyle = 'white';
+            context.font = 'bold 64px Noto Sans KR';  // 폰트 변경
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(number.toString(), canvas.width/2, canvas.height/2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ 
+                map: texture,
+                sizeAttenuation: true,  // 거리에 따른 크기 변화 활성화
+                transparent: true,
+                depthTest: false  // 항상 앞에 보이도록 설정
+            });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            
+            // 구의 위쪽 방향 벡터 계산
+            const sphereUp = position.clone().normalize();
+            const labelPosition = position.clone().add(sphereUp.multiplyScalar(0.2));  // 거리 증가
+            
+            sprite.position.copy(labelPosition);
+            sprite.scale.set(0.5, 0.5, 0.5);  // 크기 증가
+            
+            return sprite;
+        }
+
+        // Create random points with minimum distance check
+        function createPoints(count, minDistance = 0.1) {
+            const generatedPoints = [];
+            const generatedObjects = [];
+            let attempts = 0;
+            const maxAttempts = count * 100;  // 무한 루프 방지
+
+            while (generatedPoints.length < count && attempts < maxAttempts) {
+                const point = new THREE.Vector3(
+                    Math.random() * 2 - 1,
+                    Math.random() * 2 - 1,
+                    Math.random() * 2 - 1
+                );
+                point.normalize();
+                point.multiplyScalar(3);
+
+                // 최소 거리 체크
+                let tooClose = false;
+                for (const existingPoint of generatedPoints) {
+                    if (point.distanceTo(existingPoint) < minDistance) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+
+                if (!tooClose) {
+                    generatedPoints.push(point.clone());
+                    const geometry = new THREE.SphereGeometry(0.06, 32, 32);
+                    const pointMesh = new THREE.Mesh(geometry, pointMaterial);
+                    pointMesh.position.copy(point);
+                    pointMesh.castShadow = true;
+                    pointMesh.receiveShadow = true;
+                    scene.add(pointMesh);
+                    generatedObjects.push(pointMesh);
+                }
+
+                attempts++;
+            }
+
+            return { points: generatedPoints, pointObjects: generatedObjects };
+        }
+
+        // 포인트 생성
+        const result = createPoints(pointCount, 0.1);
+        points = result.points;
+        pointObjects = result.pointObjects;
+
+        // Raycaster for detecting hover and selection
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let hoveredPoint = null;
+
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(pointObjects);
+
+            if (intersects.length > 0) {
+                if (hoveredPoint !== intersects[0].object) {
+                    if (hoveredPoint && !selectedPoints.includes(hoveredPoint)) {
+                        hoveredPoint.material = pointMaterial;
+                        hoveredPoint.scale.set(1, 1, 1);
+                    }
+                    hoveredPoint = intersects[0].object;
+                    if (!selectedPoints.includes(hoveredPoint)) {
+                        hoveredPoint.material = selectedMaterial;
+                        hoveredPoint.scale.set(1.3, 1.3, 1.3);  // 호버 시 크기를 1.5에서 1.3으로 조정
+                    }
+                }
+            } else {
+                if (hoveredPoint && !selectedPoints.includes(hoveredPoint)) {
+                    hoveredPoint.material = pointMaterial;
+                    hoveredPoint.scale.set(1, 1, 1);
+                    hoveredPoint = null;
+                }
+            }
+        }
+
+        // 디바이스 타입 감지
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        // 동작 안내 메시지 표시 함수
+        let currentGuideTimeout;
+        function showActionGuide(message, duration = null) {
+            const guide = document.getElementById('action-guide');
+            
+            // 애니메이션 리셋을 위해 클래스 제거 후 재추가
+            guide.classList.remove('show');
+            guide.offsetHeight; // 강제 리플로우
+            
+            guide.innerHTML = message;
+            guide.classList.add('show');
+            
+            if (duration) {
+                if (currentGuideTimeout) {
+                    clearTimeout(currentGuideTimeout);
+                }
+                currentGuideTimeout = setTimeout(() => {
+                    guide.classList.remove('show');
+                }, duration);
+            }
+        }
+
+        // 조작 방법 가이드 업데이트
+        function updateControlsGuide() {
+            const controlsList = document.querySelector('#controls-guide ul');
+            if (isMobileDevice) {
+                controlsList.innerHTML = `
+                    <li>한 손가락 드래그: 화면 회전</li>
+                    <li>두 손가락 핀치: 확대/축소</li>
+                    <li>두 손가락 드래그: 화면 이동</li>
+                    <li>구를 터치하여 점 선택</li>
+                    <li>하단의 생성하기 버튼: 선택한 점들로 폴리곤 생성</li>
+                `;
+            } else {
+                controlsList.innerHTML = `
+                    <li>마우스 드래그: 화면 회전</li>
+                    <li>마우스 휠: 확대/축소</li>
+                    <li>마우스 우클릭 드래그: 화면 이동</li>
+                    <li>구를 클릭하여 점 선택</li>
+                    <li>Enter 키: 선택한 점들로 폴리곤 생성</li>
+                `;
+            }
+        }
+
+        // 초기 로딩 시 조작 방법 가이드 업데이트
+        updateControlsGuide();
+
+        // 동작 안내 메시지 생성 함수
+        function getActionMessage(type, data = {}) {
+            const messages = {
+                initial: isMobileDevice 
+                    ? '첫 번째 점을 터치해주세요'
+                    : '첫 번째 점을 클릭해주세요',
+                second: isMobileDevice
+                    ? '두 번째 점을 터치해주세요'
+                    : '두 번째 점을 클릭해주세요',
+                third: isMobileDevice
+                    ? '세 번째 점을 터치해주세요'
+                    : '세 번째 점을 클릭해주세요',
+                readyToComplete: isMobileDevice
+                    ? `3D 폴리곤을 완성하시려면 하단의 생성하기 버튼을 터치해주세요. 포인트를 더 선택하기 원하시면 ${data.nextPoint}번째 점을 터치해주세요.`
+                    : `3D 폴리곤을 완성하시려면 Enter 키를 누르거나 하단의 생성하기 버튼을 클릭해주세요. 포인트를 더 선택하기 원하시면 ${data.nextPoint}번째 점을 클릭해주세요.`,
+                completed: isMobileDevice
+                    ? '폴리곤이 완성되었습니다. 새로운 폴리곤을 만들려면 <a href="javascript:location.reload()">여기를 터치</a>하여 초기화하세요.'
+                    : '폴리곤이 완성되었습니다. 새로운 폴리곤을 만들려면 <a href="javascript:location.reload()">여기를 클릭</a>하여 초기화하세요.',
+                needMorePoints: isMobileDevice
+                    ? `3D 폴리곤을 만들려면 최소 3개의 점이 필요합니다. ${data.nextPoint}번째 점을 터치해주세요`
+                    : `3D 폴리곤을 만들려면 최소 3개의 점이 필요합니다. ${data.nextPoint}번째 점을 클릭해주세요`
+            };
+            return messages[type];
+        }
+
+        // 초기 로딩 메시지 표시
+        window.addEventListener('load', () => {
+            showActionGuide(getActionMessage('initial'));
+        });
+
+        let isPolygonCompleted = false;  // 폴리곤 완성 여부 추적
+
+        // 생성 버튼 관련 코드 추가
+        const createButton = document.getElementById('create-button');
+        
+        function updateCreateButtonVisibility() {
+            if (selectedPoints.length >= 3 && !isPolygonCompleted) {
+                createButton.classList.add('show');
+            } else {
+                createButton.classList.remove('show');
+            }
+        }
+
+        function onClick() {
+            if (isPolygonCompleted) return;
+            
+            if (hoveredPoint && !selectedPoints.includes(hoveredPoint)) {
+                const index = selectedPoints.length;
+                selectedPoints.push(hoveredPoint);
+                
+                // 선택된 점의 재질 변경
+                hoveredPoint.material = selectedMaterial;
+                
+                // 순서 표시 라벨 추가
+                const label = createPointLabel(index + 1, hoveredPoint.position);
+                scene.add(label);
+                pointLabels.push(label);
+                
+                if (selectedPoints.length > 1) {
+                    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                        selectedPoints[selectedPoints.length - 2].position,
+                        selectedPoints[selectedPoints.length - 1].position
+                    ]);
+                    const line = new THREE.Line(lineGeometry, lineMaterial);
+                    scene.add(line);
+                    currentLines.push(line);
+                }
+
+                // 다음 동작 안내
+                if (selectedPoints.length >= 4) {
+                    showActionGuide(getActionMessage('readyToComplete', { nextPoint: selectedPoints.length + 1 }));
+                } else if (selectedPoints.length === 1) {
+                    showActionGuide(getActionMessage('second'));
+                } else if (selectedPoints.length === 2) {
+                    showActionGuide(getActionMessage('third'));
+                } else if (selectedPoints.length === 3) {
+                    showActionGuide(getActionMessage('readyToComplete', { nextPoint: 4 }));
+                }
+                updateCreateButtonVisibility();
+            } else if (hoveredPoint && selectedPoints.includes(hoveredPoint)) {
+                // 이미 선택된 점을 다시 선택하려고 할 때는 아무 동작도 하지 않음
+                return;
+            }
+        }
+
+        function createPolygon() {
+            if (selectedPoints.length <= 2) return;
+
+            // 기존 폴리곤과 선 제거
+            if (currentPolygon) {
+                scene.remove(currentPolygon);
+            }
+            currentLines.forEach(line => scene.remove(line));
+            currentLines = [];
+
+            // 선 다시 그리기
+            for (let i = 0; i < selectedPoints.length - 1; i++) {
+                const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                    selectedPoints[i].position,
+                    selectedPoints[i + 1].position
+                ]);
+                const line = new THREE.Line(lineGeometry, lineMaterial);
+                scene.add(line);
+                currentLines.push(line);
+            }
+
+            // 마지막 점과 첫 점을 연결하는 선 추가
+            const closingLineGeometry = new THREE.BufferGeometry().setFromPoints([
+                selectedPoints[selectedPoints.length - 1].position,
+                selectedPoints[0].position
+            ]);
+            const closingLine = new THREE.Line(closingLineGeometry, lineMaterial);
+            scene.add(closingLine);
+            currentLines.push(closingLine);
+
+            const vertices = [];
+            // 선택된 점들의 순서대로 삼각형 생성
+            for (let i = 1; i < selectedPoints.length - 1; i++) {
+                vertices.push(
+                    selectedPoints[0].position.x, selectedPoints[0].position.y, selectedPoints[0].position.z,
+                    selectedPoints[i].position.x, selectedPoints[i].position.y, selectedPoints[i].position.z,
+                    selectedPoints[i + 1].position.x, selectedPoints[i + 1].position.y, selectedPoints[i + 1].position.z
+                );
+            }
+
+            const shapeGeometry = new THREE.BufferGeometry();
+            shapeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+            const shapeMaterial = new THREE.MeshPhongMaterial({
+                color: 0x808080,  // 회색
+                side: THREE.DoubleSide,
+                transparent: false,
+                shininess: 30,
+                specular: 0x444444,
+                flatShading: true
+            });
+            
+            currentPolygon = new THREE.Mesh(shapeGeometry, shapeMaterial);
+            currentPolygon.castShadow = true;
+            currentPolygon.receiveShadow = true;
+            scene.add(currentPolygon);
+        }
+
+        // Scene, Camera, Renderer 설정 아래에 자동 회전 관련 변수 추가
+        let autoRotate = false;
+        const autoRotateSpeed = 0.001;  // 매우 느린 회전 속도
+        let isDragging = false;
+
+        // 생성 버튼 클릭 이벤트 수정
+        createButton.addEventListener('click', () => {
+            if (selectedPoints.length > 2) {
+                createPolygon();
+                isPolygonCompleted = true;
+                updateCreateButtonVisibility();
+                showActionGuide(getActionMessage('completed'));
+                autoRotate = true;  // 자동 회전 활성화
+                
+                // 선택되지 않은 점들을 반투명하게 처리
+                pointObjects.forEach(point => {
+                    if (!selectedPoints.includes(point)) {
+                        point.material = point.material.clone();  // 재질 복제
+                        point.material.transparent = true;
+                        point.material.opacity = 0.3;
+                    }
+                });
+            }
+        });
+
+        // Enter 키 이벤트 핸들러 수정
+        function onEnterKey(event) {
+            if (event.key === 'Enter') {
+                if (selectedPoints.length > 2) {
+                    createPolygon();
+                    isPolygonCompleted = true;
+                    updateCreateButtonVisibility();
+                    showActionGuide(getActionMessage('completed'));
+                    autoRotate = true;  // 자동 회전 활성화
+                    
+                    // 선택되지 않은 점들을 반투명하게 처리
+                    pointObjects.forEach(point => {
+                        if (!selectedPoints.includes(point)) {
+                            point.material = point.material.clone();  // 재질 복제
+                            point.material.transparent = true;
+                            point.material.opacity = 0.3;
+                        }
+                    });
+                } else if (selectedPoints.length > 0) {
+                    showActionGuide(getActionMessage('needMorePoints', { nextPoint: selectedPoints.length + 1 }));
+                }
+            }
+        }
+
+        // Event Listeners
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('click', onClick);
+        window.addEventListener('keydown', onEnterKey);
+
+        // 카메라 변경 이벤트 리스너
+        document.querySelectorAll('input[name="camera"]').forEach(radio => {
+            // 라디오 버튼의 부모 label에 이벤트 전파 방지 추가
+            radio.closest('label').addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+            });
+            radio.closest('label').addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+            radio.closest('label').addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+            });
+            
+            radio.addEventListener('change', (e) => {
+                e.stopPropagation();  // 이벤트 전파 방지
+                if (e.target.value === 'perspective') {
+                    camera = perspectiveCamera;
+                    controls = perspectiveControls;
+                } else {
+                    camera = orthographicCamera;
+                    controls = orthographicControls;
+                }
+            });
+        });
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            if (camera instanceof THREE.PerspectiveCamera) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+            } else {
+                camera.left = window.innerWidth / -200;
+                camera.right = window.innerWidth / 200;
+                camera.top = window.innerHeight / 200;
+                camera.bottom = window.innerHeight / -200;
+            }
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Animation Loop 수정
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // 자동 회전 처리
+            if (autoRotate && !isDragging) {
+                scene.rotation.y += autoRotateSpeed;
+            }
+            
+            // 조명 위치 업데이트
+            const cameraPosition = camera.position.clone();
+            const cameraDirection = new THREE.Vector3(0, 0, 0).sub(cameraPosition).normalize();
+            const rightVector = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            
+            frontLight.position.copy(cameraPosition);
+            rightLight.position.copy(cameraPosition).add(rightVector.multiplyScalar(2));
+            leftLight.position.copy(cameraPosition).add(rightVector.multiplyScalar(-2));
+            
+            // 라벨 업데이트
+            pointLabels.forEach((label, index) => {
+                if (selectedPoints[index]) {
+                    const sphereUp = selectedPoints[index].position.clone().normalize();
+                    const labelPosition = selectedPoints[index].position.clone().add(sphereUp.multiplyScalar(0.2));
+                    label.position.copy(labelPosition);
+                    label.quaternion.copy(camera.quaternion);
+                }
+            });
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // 터치 이벤트를 마우스 이벤트로 변환하는 함수들
+        function touchToMouse(touch, element) {
+            return {
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+                target: element
+            };
+        }
+
+        function onTouchMove(event) {
+            event.preventDefault();
+            if (event.touches.length === 1) {
+                const touch = event.touches[0];
+                onMouseMove(touchToMouse(touch, event.target));
+            }
+        }
+
+        function onTouchStart(event) {
+            event.preventDefault();
+            if (event.touches.length === 1) {
+                const touch = event.touches[0];
+                onMouseMove(touchToMouse(touch, event.target));
+                onClick();
+            }
+        }
+
+        // 터치 이벤트 리스너 추가
+        renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: false });
+        renderer.domElement.addEventListener('touchmove', onTouchMove, { passive: false });
+
+        // OrbitControls에 터치 이벤트 활성화
+        controls.enableTouchRotate = true;
+        controls.enableTouchZoom = true;
+        controls.enableTouchPan = true;
+        orthographicControls.enableTouchRotate = true;
+        orthographicControls.enableTouchZoom = true;
+        orthographicControls.enableTouchPan = true;
+
+        // 모바일에서 더블탭 줌 방지
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // 모바일에서 핀치 줌 방지
+        document.addEventListener('gesturestart', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        // 반응형 처리를 위한 resize 이벤트 핸들러 수정
+        function updateLayout() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            if (camera instanceof THREE.PerspectiveCamera) {
+                camera.aspect = width / height;
+            } else {
+                // 모바일에서는 더 작은 스케일 사용
+                const scale = width < 480 ? 150 : 200;
+                camera.left = width / -scale;
+                camera.right = width / scale;
+                camera.top = height / scale;
+                camera.bottom = height / -scale;
+            }
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            
+            // 모바일에서 OrbitControls 감도 조정
+            const sensitivity = width < 480 ? 0.5 : 1;
+            controls.rotateSpeed = sensitivity;
+            controls.zoomSpeed = sensitivity;
+            controls.panSpeed = sensitivity;
+            orthographicControls.rotateSpeed = sensitivity;
+            orthographicControls.zoomSpeed = sensitivity;
+            orthographicControls.panSpeed = sensitivity;
+        }
+
+        window.addEventListener('resize', updateLayout);
+        // 초기 레이아웃 설정
+        updateLayout();
+
+        // 조작 방법 가이드 토글
+        const controlsGuide = document.getElementById('controls-guide');
+        controlsGuide.addEventListener('click', () => {
+            controlsGuide.classList.toggle('collapsed');
+        });
+
+        // 초기 상태로 접힌 상태 설정
+        controlsGuide.classList.add('collapsed');
+    </script>
+</body>
+</html>
