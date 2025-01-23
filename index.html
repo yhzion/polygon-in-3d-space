@@ -670,7 +670,7 @@
 
                 if (!tooClose) {
                     generatedPoints.push(point.clone());
-                    const geometry = new THREE.SphereGeometry(0.06, 32, 32);
+                    const geometry = new THREE.SphereGeometry(0.09, 32, 32);  // 0.06에서 0.09로 크기 증가
                     const pointMesh = new THREE.Mesh(geometry, pointMaterial);
                     pointMesh.position.copy(point);
                     pointMesh.castShadow = true;
@@ -817,10 +817,18 @@
             }
         }
 
+        // 햅틱 피드백 함수
+        function triggerHaptic() {
+            if (isMobileDevice && navigator.vibrate) {
+                navigator.vibrate(40);  // 40ms의 짧은 진동
+            }
+        }
+
         function onClick() {
             if (isPolygonCompleted) return;
             
             if (hoveredPoint && !selectedPoints.includes(hoveredPoint)) {
+                triggerHaptic();  // 점 선택 시 햅틱 피드백
                 const index = selectedPoints.length;
                 selectedPoints.push(hoveredPoint);
                 
@@ -927,6 +935,7 @@
         // 생성 버튼 클릭 이벤트 수정
         createButton.addEventListener('click', async () => {
             if (selectedPoints.length > 2) {
+                triggerHaptic();  // 폴리곤 생성 시 햅틱 피드백
                 createPolygon();
                 isPolygonCompleted = true;
                 updateCreateButtonVisibility();
@@ -986,6 +995,7 @@
             
             radio.addEventListener('change', (e) => {
                 e.stopPropagation();  // 이벤트 전파 방지
+                triggerHaptic();  // 카메라 모드 변경 시 햅틱 피드백
                 if (e.target.value === 'perspective') {
                     camera = perspectiveCamera;
                     controls = perspectiveControls;
@@ -1129,6 +1139,9 @@
 
         // 초기 상태로 접힌 상태 설정
         controlsGuide.classList.add('collapsed');
+
+        // Raycaster 설정 수정
+        raycaster.params.Points.threshold = 0.1;  // 클릭/터치 감지 영역 증가
     </script>
 </body>
 </html>
