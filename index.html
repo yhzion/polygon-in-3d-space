@@ -168,59 +168,36 @@
             background: #2563eb;
             color: #fff;
         }
-        .checkbox-group {
+        /* 전체화면 버튼 스타일 */
+        #fullscreen-button {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: transparent;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 1000;
+            border: none;
             display: flex;
             align-items: center;
-        }
-        .checkbox-group label {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            color: #666;
-            padding: 6px 12px;
-            background: #f5f5f5;
-            border-radius: 6px;
+            justify-content: center;
             transition: all 0.2s ease;
         }
-        .checkbox-group label:hover {
-            background: #eee;
+        #fullscreen-button:hover {
+            transform: scale(1.1);
         }
-        .checkbox-group input[type="checkbox"] {
-            appearance: none;
-            width: 14px;
-            height: 14px;
-            border: 2px solid #666;
-            border-radius: 4px;
-            cursor: pointer;
-            position: relative;
+        #fullscreen-button:active {
+            transform: scale(0.95);
+        }
+        #fullscreen-button svg {
+            width: 24px;
+            height: 24px;
+            stroke: rgba(255, 255, 255, 0.7);
             transition: all 0.2s ease;
-            background: white;
         }
-        .checkbox-group input[type="checkbox"]:checked {
-            background: white;
-            border-color: #666;
-        }
-        .checkbox-group input[type="checkbox"]:checked::after {
-            content: "";
-            position: absolute;
-            left: 4px;
-            top: 1px;
-            width: 4px;
-            height: 8px;
-            border: solid #666;
-            border-width: 0 2px 2px 0;
-            transform: rotate(45deg);
-        }
-        .checkbox-group input[type="checkbox"]:hover {
-            border-color: #333;
-        }
-        .checkbox-group input[type="checkbox"]:checked:hover {
-            border-color: #333;
-        }
-        .checkbox-group input[type="checkbox"]:checked + span {
-            color: #666;
+        #fullscreen-button:hover svg {
+            stroke: rgba(255, 255, 255, 0.9);
         }
         #controls-guide {
             position: fixed;
@@ -479,6 +456,12 @@
 
     <div id="action-guide"></div>
 
+    <button id="fullscreen-button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+        </svg>
+    </button>
+
     <a href="https://github.com/yhzion/polygon-in-3d-space" target="_blank" rel="noopener noreferrer" id="signature">
         <img src="https://avatars.githubusercontent.com/yhzion" alt="yhzion" crossorigin="anonymous" />
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -491,23 +474,13 @@
     {
         "imports": {
             "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
-            "three/examples/jsm/controls/OrbitControls": "https://unpkg.com/three@0.162.0/examples/jsm/controls/OrbitControls.js",
-            "three/examples/jsm/libs/stats.module": "https://unpkg.com/three@0.162.0/examples/jsm/libs/stats.module.js"
+            "three/examples/jsm/controls/OrbitControls": "https://unpkg.com/three@0.162.0/examples/jsm/controls/OrbitControls.js"
         }
     }
     </script>
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-        import Stats from 'three/examples/jsm/libs/stats.module';
-
-        // Stats 초기화
-        const stats = new Stats();
-        stats.dom.style.position = 'absolute';
-        stats.dom.style.right = '0px';
-        stats.dom.style.top = '0px';
-        stats.dom.style.left = 'auto';
-        document.body.appendChild(stats.dom);
 
         // Scene, Camera, Renderer
         const scene = new THREE.Scene();
@@ -1083,12 +1056,44 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
+        // 전체화면 토글 기능
+        const fullscreenButton = document.getElementById('fullscreen-button');
+        
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function updateFullscreenIcon() {
+            const svg = fullscreenButton.querySelector('svg');
+            if (document.fullscreenElement) {
+                // 전체화면 해제 아이콘
+                svg.innerHTML = `
+                    <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+                `;
+            } else {
+                // 전체화면 진입 아이콘
+                svg.innerHTML = `
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                `;
+            }
+        }
+
+        fullscreenButton.addEventListener('click', () => {
+            triggerHaptic();  // 햅틱 피드백 추가
+            toggleFullscreen();
+        });
+
+        document.addEventListener('fullscreenchange', updateFullscreenIcon);
+
         // Animation Loop 수정
         function animate() {
             requestAnimationFrame(animate);
-            
-            // Stats 업데이트
-            stats.update();
             
             // 조명 위치 업데이트
             const cameraPosition = camera.position.clone();
