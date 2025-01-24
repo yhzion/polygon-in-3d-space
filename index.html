@@ -1058,6 +1058,8 @@
 
         // 전체화면 토글 기능
         const fullscreenButton = document.getElementById('fullscreen-button');
+        let wakeLock = null;  // Wake Lock API 인스턴스를 저장할 변수
+        let isWakeLockSupported = 'wakeLock' in navigator;  // Wake Lock API 지원 여부 확인
         
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
@@ -1069,6 +1071,32 @@
             }
         }
 
+        // Wake Lock 요청 함수
+        async function requestWakeLock() {
+            try {
+                if (isWakeLockSupported) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake Lock이 활성화되었습니다.');
+                }
+            } catch (err) {
+                console.log(`Wake Lock 요청 실패: ${err.name}, ${err.message}`);
+            }
+        }
+
+        // Wake Lock 해제 함수
+        async function releaseWakeLock() {
+            try {
+                if (wakeLock) {
+                    await wakeLock.release();
+                    wakeLock = null;
+                    console.log('Wake Lock이 해제되었습니다.');
+                }
+            } catch (err) {
+                console.log(`Wake Lock 해제 실패: ${err.name}, ${err.message}`);
+            }
+        }
+
+        // 전체화면 상태 변경 시 Wake Lock 처리
         function updateFullscreenIcon() {
             const svg = fullscreenButton.querySelector('svg');
             if (document.fullscreenElement) {
@@ -1076,11 +1104,13 @@
                 svg.innerHTML = `
                     <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
                 `;
+                requestWakeLock();  // 전체화면 진입 시 Wake Lock 요청
             } else {
                 // 전체화면 진입 아이콘
                 svg.innerHTML = `
                     <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
                 `;
+                releaseWakeLock();  // 전체화면 해제 시 Wake Lock 해제
             }
         }
 
